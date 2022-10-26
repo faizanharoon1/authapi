@@ -14,6 +14,7 @@ namespace DAL
     {
         Task<T> GetAsync<T>(int id) where T : class;
         Task<int> InsertAsync<T>(T insert) where T : class;
+        Task<bool> UpdateAsync<T>(T insert) where T : class;
         Task<IEnumerable<T>> QueryAsyncWithRetry<T>(string query, object queryParameters, int? CommandTimeout = null);
         Task<T> QueryFirstOrDefaultAsync<T>(string query, object queryParameters);
         Task<int> ExecuteAsync(string query, object queryParameters, int? commandTimeout = null);
@@ -70,6 +71,33 @@ namespace DAL
                     try
                     {
                         return await sqlconn.InsertAsync<T>(insert);
+                    }
+                    catch (SqlException ex)
+                    {
+                        Debug.WriteLine("Exception: {0}", ex.Message);
+                        throw;
+                    }
+                    finally
+                    {
+                        sqlconn.Close();
+                    }
+                }
+
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+        public async Task<bool> UpdateAsync<T>(T insert) where T : class
+        {
+            try
+            {
+                using (MySqlConnection sqlconn = new MySqlConnection(_configuration.Value.AuthConnectionString))
+                {
+                    try
+                    {
+                        return await sqlconn.UpdateAsync<T>(insert);
                     }
                     catch (SqlException ex)
                     {

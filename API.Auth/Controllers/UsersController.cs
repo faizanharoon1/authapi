@@ -66,7 +66,7 @@ namespace WebApi.Controllers
         [HttpPost("verify-email")]
         public IActionResult VerifyEmail(VerifyEmailRequest model)
         {
-            _UserService.VerifyEmail(model.Token);
+            _UserService.VerifyEmail(model);
             return Ok(new { message = "Verification successful, you can now login" });
         }
 

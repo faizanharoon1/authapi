@@ -2,10 +2,12 @@ using AutoMapper;
 using DAL;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using WebApi.Helpers;
 using WebApi.Models.Users;
 using BC = BCrypt.Net.BCrypt;
 
@@ -17,7 +19,7 @@ namespace WebApi.Services
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         void RevokeToken(string token, string ipAddress);
         Task Register(RegisterRequest model, string origin);
-        void VerifyEmail(string token);
+        Task VerifyEmail(VerifyEmailRequest model);
         void ForgotPassword(ForgotPasswordRequest model, string origin);
         void ValidateResetToken(ValidateResetTokenRequest model);
         void ResetPassword(ResetPasswordRequest model);
@@ -50,30 +52,31 @@ namespace WebApi.Services
 
         public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress)
         {
-            // var User = _context.Users.SingleOrDefault(x => x.Email == model.Username);
-            // if (User == null || !User.IsVerified)
-            //     throw new AppException("User is unverified! Please check your email!");
+            User existingUser = await GetUserByEmail(model.Username);
+            if (existingUser == null || !existingUser.IsVerified)
+                throw new AppException("User is unverified! Please check your email!");
 
-            // if (!BC.Verify(model.Password, User.PasswordHash))
-            //     throw new AppException("Email or password is incorrect");
+            if (!BC.Verify(model.Password, existingUser.PasswordHash))
+                throw new AppException("Email or password is incorrect");
 
-            // // authentication successful so generate jwt and refresh tokens
-            // var jwtToken = generateJwtToken(User);
-            // var refreshToken = generateRefreshToken(ipAddress);
-            // User.RefreshTokens.Add(refreshToken);
+            // authentication successful so generate jwt and refresh tokens
+            var jwtToken = generateJwtToken(existingUser);
+            var refreshToken = generateRefreshToken(ipAddress);
+            if (existingUser.RefreshTokens == null)
+                existingUser.RefreshTokens = new List<RefreshToken>();
 
-            // // remove old refresh tokens from User
-            // removeOldRefreshTokens(User);
+            existingUser.RefreshTokens.Add(refreshToken);
 
-            // // save changes to db
-            //await _context.ExecuteAsync(User);
-            // _context.SaveChanges();
+            // remove old refresh tokens from User
+            removeOldRefreshTokens(existingUser);
 
-            // var response = _mapper.Map<AuthenticateResponse>(User);
-            // response.Access_token = jwtToken;
-            // response.RefreshToken = refreshToken.Token;
-            // return response;
-            return null;
+            // save changes to db
+            await _context.UpdateAsync(existingUser);
+
+            var response = _mapper.Map<AuthenticateResponse>(existingUser);
+            response.Access_token = jwtToken;
+            response.RefreshToken = refreshToken.Token;
+            return response;
         }
 
         public AuthenticateResponse RefreshToken(string token, string ipAddress)
@@ -115,7 +118,7 @@ namespace WebApi.Services
 
         public async Task Register(RegisterRequest model, string origin)
         {
-            var existingUser = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE Email=@Email;", new { model.Email });
+            User existingUser = await GetUserByEmail(model.Email);
 
 
             // validate
@@ -144,19 +147,23 @@ namespace WebApi.Services
 
             // send email
             sendVerificationEmail(User, origin);
+
+         
         }
-
-        public void VerifyEmail(string token)
+        async Task<User> GetUserByEmail(string email)
         {
-            //var User = _context.Users.SingleOrDefault(x => x.VerificationToken == token);
+            return await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE Email=@email;", new { email });
+        }
+        public async Task VerifyEmail(VerifyEmailRequest model)
+        {
+            var User = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE UserGuid=@UserGuid;", new { model.UserGuid });
 
-            //if (User == null) throw new AppException("Verification failed");
+            if (User == null || User.VerificationToken!=model.Token) throw new AppException("Verification failed");
 
-            //User.Verified = DateTime.UtcNow;
-            //User.VerificationToken = null;
+            User.Verified = DateTime.UtcNow;
+            User.VerificationToken = null;
 
-            //_context.Users.Update(User);
-            //_context.SaveChanges();
+           await _context.UpdateAsync(User);
         }
 
         public void ForgotPassword(ForgotPasswordRequest model, string origin)

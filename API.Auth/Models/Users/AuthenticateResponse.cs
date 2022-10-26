@@ -5,7 +5,7 @@ namespace WebApi.Models.Users
 {
     public class AuthenticateResponse
     {
-        public Guid UserId { get; set; }
+        public Guid UserGuid { get; set; }
         [JsonIgnore]
         public string Title { get; set; }
         [JsonIgnore]

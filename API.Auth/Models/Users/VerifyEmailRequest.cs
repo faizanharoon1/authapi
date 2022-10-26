@@ -6,5 +6,7 @@ namespace WebApi.Models.Users
     {
         [Required]
         public string Token { get; set; }
+        [Required]
+        public string UserGuid { get; set; }
     }
 }
