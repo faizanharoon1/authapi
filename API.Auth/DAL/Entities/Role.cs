@@ -1,4 +1,4 @@
-namespace WebApi.Entities
+namespace DAL
 {
     public enum Role
     {

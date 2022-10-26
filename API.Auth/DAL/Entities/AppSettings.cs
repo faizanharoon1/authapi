@@ -1,4 +1,4 @@
-namespace WebApi.Helpers
+namespace DAL
 {
     public class AppSettings
     {
@@ -13,5 +13,10 @@ namespace WebApi.Helpers
         public int SmtpPort { get; set; }
         public string SmtpUser { get; set; }
         public string SmtpPass { get; set; }
+    }
+
+    public class ConnectionStrings
+    {
+        public string AuthConnectionString { get; set; }
     }
 }

@@ -1,9 +1,6 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
+using DAL;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using WebApi.Entities;
 using WebApi.Models.Users;
 using WebApi.Services;
 
@@ -25,9 +22,9 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("authenticate")]
-        public ActionResult<AuthenticateResponse> Authenticate(AuthenticateRequest model)
+        public async Task<IActionResult> Authenticate(AuthenticateRequest model)
         {
-            var response = _UserService.Authenticate(model, ipAddress());
+            var response = await _UserService.Authenticate(model, ipAddress());
             setTokenCookie(response.RefreshToken);
             return Ok(response);
         }
@@ -60,9 +57,9 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("register")]
-        public IActionResult Register(RegisterRequest model)
+        public async Task<IActionResult> Register(RegisterRequest model)
         {
-            _UserService.Register(model, Request.Headers["origin"]);
+          await  _UserService.Register(model, Request.Headers["origin"]);
             return Ok(new { message = "Registration successful, please check your email for verification instructions" });
         }
 
@@ -106,7 +103,7 @@ namespace WebApi.Controllers
         public ActionResult<UserResponse> GetById(Guid id)
         {
             // users can get their own User and admins can get any User
-            if (id != user.UserGuid )
+            if (id != user.UserGuid)
                 return Unauthorized(new { message = "Unauthorized" });
 
             var User = _UserService.GetById(id);

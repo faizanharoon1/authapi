@@ -1,5 +1,5 @@
 using AutoMapper;
-using WebApi.Entities;
+using DAL;
 using WebApi.Models.Users;
 
 namespace WebApi.Helpers

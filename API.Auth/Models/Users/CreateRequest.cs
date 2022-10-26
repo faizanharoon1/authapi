@@ -1,5 +1,5 @@
+using DAL;
 using System.ComponentModel.DataAnnotations;
-using WebApi.Entities;
 
 namespace WebApi.Models.Users
 {
@@ -8,13 +8,13 @@ namespace WebApi.Models.Users
 
         public string Title { get; set; }
 
-    
+
         public string FirstName { get; set; }
 
-  
+
         public string LastName { get; set; }
 
-     
+
         [EnumDataType(typeof(Role))]
         public string Role { get; set; }
 

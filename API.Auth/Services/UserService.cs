@@ -1,26 +1,22 @@
 using AutoMapper;
-using BC = BCrypt.Net.BCrypt;
+using DAL;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using WebApi.Entities;
-using WebApi.Helpers;
 using WebApi.Models.Users;
+using BC = BCrypt.Net.BCrypt;
 
 namespace WebApi.Services
 {
     public interface IUserService
     {
-        AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress);
+        Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress);
         AuthenticateResponse RefreshToken(string token, string ipAddress);
         void RevokeToken(string token, string ipAddress);
-        void Register(RegisterRequest model, string origin);
+        Task Register(RegisterRequest model, string origin);
         void VerifyEmail(string token);
         void ForgotPassword(ForgotPasswordRequest model, string origin);
         void ValidateResetToken(ValidateResetTokenRequest model);
@@ -35,90 +31,95 @@ namespace WebApi.Services
 
     public class UserService : IUserService
     {
-        private readonly DataContext _context;
+        private readonly IDbContext _context;
         private readonly IMapper _mapper;
-        private readonly AppSettings _appSettings;
+        private readonly IOptions<AppSettings> _appSettings;
         private readonly IEmailService _emailService;
 
         public UserService(
-            DataContext context,
+            IDbContext context,
             IMapper mapper,
             IOptions<AppSettings> appSettings,
             IEmailService emailService)
         {
             _context = context;
             _mapper = mapper;
-            _appSettings = appSettings.Value;
+            _appSettings = appSettings;
             _emailService = emailService;
         }
 
-        public AuthenticateResponse Authenticate(AuthenticateRequest model, string ipAddress)
+        public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress)
         {
-            var User = _context.Users.SingleOrDefault(x => x.Email == model.Username);
-            if (User == null || !User.IsVerified )
-                throw new AppException("User is unverified! Please check your email!");
+            // var User = _context.Users.SingleOrDefault(x => x.Email == model.Username);
+            // if (User == null || !User.IsVerified)
+            //     throw new AppException("User is unverified! Please check your email!");
 
-            if (!BC.Verify(model.Password, User.PasswordHash))
-                throw new AppException("Email or password is incorrect");
+            // if (!BC.Verify(model.Password, User.PasswordHash))
+            //     throw new AppException("Email or password is incorrect");
 
-            // authentication successful so generate jwt and refresh tokens
-            var jwtToken = generateJwtToken(User);
-            var refreshToken = generateRefreshToken(ipAddress);
-            User.RefreshTokens.Add(refreshToken);
+            // // authentication successful so generate jwt and refresh tokens
+            // var jwtToken = generateJwtToken(User);
+            // var refreshToken = generateRefreshToken(ipAddress);
+            // User.RefreshTokens.Add(refreshToken);
 
-            // remove old refresh tokens from User
-            removeOldRefreshTokens(User);
+            // // remove old refresh tokens from User
+            // removeOldRefreshTokens(User);
 
-            // save changes to db
-            _context.Update(User);
-            _context.SaveChanges();
+            // // save changes to db
+            //await _context.ExecuteAsync(User);
+            // _context.SaveChanges();
 
-            var response = _mapper.Map<AuthenticateResponse>(User);
-            response.Access_token = jwtToken;
-            response.RefreshToken = refreshToken.Token;
-            return response;
+            // var response = _mapper.Map<AuthenticateResponse>(User);
+            // response.Access_token = jwtToken;
+            // response.RefreshToken = refreshToken.Token;
+            // return response;
+            return null;
         }
 
         public AuthenticateResponse RefreshToken(string token, string ipAddress)
         {
-            var (refreshToken, User) = getRefreshToken(token);
+            //var (refreshToken, User) = getRefreshToken(token);
 
-            // replace old refresh token with a new one and save
-            var newRefreshToken = generateRefreshToken(ipAddress);
-            refreshToken.Revoked = DateTime.UtcNow;
-            refreshToken.RevokedByIp = ipAddress;
-            refreshToken.ReplacedByToken = newRefreshToken.Token;
-            User.RefreshTokens.Add(newRefreshToken);
+            //// replace old refresh token with a new one and save
+            //var newRefreshToken = generateRefreshToken(ipAddress);
+            //refreshToken.Revoked = DateTime.UtcNow;
+            //refreshToken.RevokedByIp = ipAddress;
+            //refreshToken.ReplacedByToken = newRefreshToken.Token;
+            //User.RefreshTokens.Add(newRefreshToken);
 
-            removeOldRefreshTokens(User);
+            //removeOldRefreshTokens(User);
 
-            _context.Update(User);
-            _context.SaveChanges();
+            //_context.Update(User);
+            //_context.SaveChanges();
 
-            // generate new jwt
-            var jwtToken = generateJwtToken(User);
+            //// generate new jwt
+            //var jwtToken = generateJwtToken(User);
 
-            var response = _mapper.Map<AuthenticateResponse>(User);
-            response.Access_token = jwtToken;
-            response.RefreshToken = newRefreshToken.Token;
-            return response;
+            //var response = _mapper.Map<AuthenticateResponse>(User);
+            //response.Access_token = jwtToken;
+            //response.RefreshToken = newRefreshToken.Token;
+            //return response;
+            return null;
         }
 
         public void RevokeToken(string token, string ipAddress)
         {
-            var (refreshToken, User) = getRefreshToken(token);
+            //var (refreshToken, User) = getRefreshToken(token);
 
-            // revoke token and save
-            refreshToken.Revoked = DateTime.UtcNow;
-            refreshToken.RevokedByIp = ipAddress;
-            _context.Update(User);
-            _context.SaveChanges();
+            //// revoke token and save
+            //refreshToken.Revoked = DateTime.UtcNow;
+            //refreshToken.RevokedByIp = ipAddress;
+            //_context.Update(User);
+            //_context.SaveChanges();
         }
 
-        public void Register(RegisterRequest model, string origin)
+        public async Task Register(RegisterRequest model, string origin)
         {
+            var existingUser = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE Email=@Email;", new { model.Email });
+
+
             // validate
-            if (_context.Users.Any(x => x.Email == model.Email))
+            if (existingUser?.Email == model.Email)
             {
                 // send already registered error in email to prevent User enumeration
                 sendAlreadyRegisteredEmail(model.Email, origin);
@@ -128,9 +129,7 @@ namespace WebApi.Services
             // map model to new User object
             var User = _mapper.Map<User>(model);
 
-            // first registered User is an admin
-            var isFirstUser = _context.Users.Count() == 0;
-            User.Role = isFirstUser ? Role.Admin : Role.User;
+            User.Role = Role.User;
             User.Created = DateTime.UtcNow;
             User.VerificationToken = randomTokenString();
 
@@ -141,8 +140,7 @@ namespace WebApi.Services
             User.UserGuid = Guid.NewGuid();
 
             // save User
-            _context.Users.Add(User);
-            _context.SaveChanges();
+            await _context.InsertAsync(User);
 
             // send email
             sendVerificationEmail(User, origin);
@@ -150,68 +148,69 @@ namespace WebApi.Services
 
         public void VerifyEmail(string token)
         {
-            var User = _context.Users.SingleOrDefault(x => x.VerificationToken == token);
+            //var User = _context.Users.SingleOrDefault(x => x.VerificationToken == token);
 
-            if (User == null) throw new AppException("Verification failed");
+            //if (User == null) throw new AppException("Verification failed");
 
-            User.Verified = DateTime.UtcNow;
-            User.VerificationToken = null;
+            //User.Verified = DateTime.UtcNow;
+            //User.VerificationToken = null;
 
-            _context.Users.Update(User);
-            _context.SaveChanges();
+            //_context.Users.Update(User);
+            //_context.SaveChanges();
         }
 
         public void ForgotPassword(ForgotPasswordRequest model, string origin)
         {
-            var User = _context.Users.SingleOrDefault(x => x.Email == model.Email);
+            //var User = _context.Users.SingleOrDefault(x => x.Email == model.Email);
 
-            // always return ok response to prevent email enumeration
-            if (User == null) return;
+            //// always return ok response to prevent email enumeration
+            //if (User == null) return;
 
-            // create reset token that expires after 1 day
-            User.ResetToken = randomTokenString();
-            User.ResetTokenExpires = DateTime.UtcNow.AddDays(1);
+            //// create reset token that expires after 1 day
+            //User.ResetToken = randomTokenString();
+            //User.ResetTokenExpires = DateTime.UtcNow.AddDays(1);
 
-            _context.Users.Update(User);
-            _context.SaveChanges();
+            //_context.Users.Update(User);
+            //_context.SaveChanges();
 
-            // send email
-            sendPasswordResetEmail(User, origin);
+            //// send email
+            //sendPasswordResetEmail(User, origin);
         }
 
         public void ValidateResetToken(ValidateResetTokenRequest model)
         {
-            var User = _context.Users.SingleOrDefault(x =>
-                x.ResetToken == model.Token &&
-                x.ResetTokenExpires > DateTime.UtcNow);
+            //var User = _context.Users.SingleOrDefault(x =>
+            //    x.ResetToken == model.Token &&
+            //    x.ResetTokenExpires > DateTime.UtcNow);
 
-            if (User == null)
-                throw new AppException("Invalid token");
+            //if (User == null)
+            //    throw new AppException("Invalid token");
         }
 
         public void ResetPassword(ResetPasswordRequest model)
         {
-            var User = _context.Users.SingleOrDefault(x =>
-                x.ResetToken == model.Token &&
-                x.ResetTokenExpires > DateTime.UtcNow);
+            //var User = _context.Users.SingleOrDefault(x =>
+            //    x.ResetToken == model.Token &&
+            //    x.ResetTokenExpires > DateTime.UtcNow);
 
-            if (User == null)
-                throw new AppException("Invalid token");
+            //if (User == null)
+            //    throw new AppException("Invalid token");
 
-            // update password and remove reset token
-            User.PasswordHash = BC.HashPassword(model.Password);
-            User.PasswordReset = DateTime.UtcNow;
-            User.ResetToken = null;
-            User.ResetTokenExpires = null;
+            //// update password and remove reset token
+            //User.PasswordHash = BC.HashPassword(model.Password);
+            //User.PasswordReset = DateTime.UtcNow;
+            //User.ResetToken = null;
+            //User.ResetTokenExpires = null;
 
-            _context.Users.Update(User);
-            _context.SaveChanges();
+            //_context.Users.Update(User);
+            //_context.SaveChanges();
         }
 
         public IEnumerable<UserResponse> GetAll()
         {
-            var Users = _context.Users;
-            return _mapper.Map<IList<UserResponse>>(Users);
+            //var Users = _context.Users;
+            //return _mapper.Map<IList<UserResponse>>(Users);
+            return null;
         }
 
         public UserResponse GetById(int id)
@@ -227,79 +226,85 @@ namespace WebApi.Services
         public UserResponse Create(CreateRequest model)
         {
             // validate
-            if (_context.Users.Any(x => x.Email == model.Email))
-                throw new AppException($"Email '{model.Email}' is already registered");
+            //if (_context.Users.Any(x => x.Email == model.Email))
+            //    throw new AppException($"Email '{model.Email}' is already registered");
 
-            // map model to new User object
-            var User = _mapper.Map<User>(model);
-            User.Created = DateTime.UtcNow;
-            User.Verified = DateTime.UtcNow;
+            //// map model to new User object
+            //var User = _mapper.Map<User>(model);
+            //User.Created = DateTime.UtcNow;
+            //User.Verified = DateTime.UtcNow;
 
-            // hash password
-            User.PasswordHash = BC.HashPassword(model.Password);
+            //// hash password
+            //User.PasswordHash = BC.HashPassword(model.Password);
 
-            // save User
-            _context.Users.Add(User);
-            _context.SaveChanges();
+            //// save User
+            //_context.Users.Add(User);
+            //_context.SaveChanges();
 
-            return _mapper.Map<UserResponse>(User);
+            //return _mapper.Map<UserResponse>(User);
+            return null;
         }
 
         public UserResponse Update(int id, UpdateRequest model)
         {
-            var User = getUser(id);
+            //var User = getUser(id);
 
-            // validate
-            if (User.Email != model.Email && _context.Users.Any(x => x.Email == model.Email))
-                throw new AppException($"Email '{model.Email}' is already taken");
+            //// validate
+            //if (User.Email != model.Email && _context.Users.Any(x => x.Email == model.Email))
+            //    throw new AppException($"Email '{model.Email}' is already taken");
 
-            // hash password if it was entered
-            if (!string.IsNullOrEmpty(model.Password))
-                User.PasswordHash = BC.HashPassword(model.Password);
+            //// hash password if it was entered
+            //if (!string.IsNullOrEmpty(model.Password))
+            //    User.PasswordHash = BC.HashPassword(model.Password);
 
-            // copy model to User and save
-            _mapper.Map(model, User);
-            User.Updated = DateTime.UtcNow;
-            _context.Users.Update(User);
-            _context.SaveChanges();
+            //// copy model to User and save
+            //_mapper.Map(model, User);
+            //User.Updated = DateTime.UtcNow;
+            //_context.Users.Update(User);
+            //_context.SaveChanges();
 
-            return _mapper.Map<UserResponse>(User);
+            //return _mapper.Map<UserResponse>(User);
+            return null;
         }
 
         public void Delete(int id)
         {
-            var User = getUser(id);
-            _context.Users.Remove(User);
-            _context.SaveChanges();
+            //var User = getUser(id);
+            //_context.Users.Remove(User);
+            //_context.SaveChanges();
         }
 
         // helper methods
 
         private User getUser(int id)
         {
-            var User = _context.Users.Find(id);
-            if (User == null) throw new KeyNotFoundException("User not found");
-            return User;
+            //var User = _context.Users.Find(id);
+            //if (User == null) throw new KeyNotFoundException("User not found");
+            //return User;
+            return null;
         }
         private User getUser(Guid id)
         {
-            var User = _context.Users.FirstOrDefault(x=>x.UserGuid.Equals(id));
-            if (User == null) throw new KeyNotFoundException("User not found");
-            return User;
+            //var User = _context.Users.FirstOrDefault(x => x.UserGuid.Equals(id));
+            //if (User == null) throw new KeyNotFoundException("User not found");
+            //return User;
+            return null;
+
         }
         private (RefreshToken, User) getRefreshToken(string token)
         {
-            var User = _context.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
-            if (User == null) throw new AppException("Invalid token");
-            var refreshToken = User.RefreshTokens.Single(x => x.Token == token);
-            if (!refreshToken.IsActive) throw new AppException("Invalid token");
-            return (refreshToken, User);
+            //var User = _context.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
+            //if (User == null) throw new AppException("Invalid token");
+            //var refreshToken = User.RefreshTokens.Single(x => x.Token == token);
+            //if (!refreshToken.IsActive) throw new AppException("Invalid token");
+            //return (refreshToken, User);
+            return (null, null);
         }
 
         private string generateJwtToken(User User)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_appSettings.Secret);
+            var key = Encoding.ASCII.GetBytes(_appSettings.Value.Secret);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[] { new Claim("id", User.Id.ToString()) }),
@@ -323,9 +328,9 @@ namespace WebApi.Services
 
         private void removeOldRefreshTokens(User User)
         {
-            User.RefreshTokens.RemoveAll(x => 
-                !x.IsActive && 
-                x.Created.AddDays(_appSettings.RefreshTokenTTL) <= DateTime.UtcNow);
+            User.RefreshTokens.RemoveAll(x =>
+                !x.IsActive &&
+                x.Created.AddDays(_appSettings.Value.RefreshTokenTTL) <= DateTime.UtcNow);
         }
 
         private string randomTokenString()

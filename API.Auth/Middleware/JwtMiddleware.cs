@@ -1,12 +1,8 @@
-using Microsoft.AspNetCore.Http;
+using DAL;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using WebApi.Helpers;
 
 namespace WebApi.Middleware
 {
@@ -21,7 +17,7 @@ namespace WebApi.Middleware
             _appSettings = appSettings.Value;
         }
 
-        public async Task Invoke(HttpContext context, DataContext dataContext)
+        public async Task Invoke(HttpContext context, IDbContext dataContext)
         {
             var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
@@ -31,7 +27,7 @@ namespace WebApi.Middleware
             await _next(context);
         }
 
-        private async Task attachUserToContext(HttpContext context, DataContext dataContext, string token)
+        private async Task attachUserToContext(HttpContext context, IDbContext dataContext, string token)
         {
             try
             {
@@ -51,9 +47,9 @@ namespace WebApi.Middleware
                 var UserId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
 
                 // attach User to context on successful jwt validation
-                context.Items["User"] = await dataContext.Users.FindAsync(UserId);
+                context.Items["User"] = await dataContext.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users where Id=@UserId;", new { UserId });
             }
-            catch 
+            catch
             {
                 // do nothing if jwt validation fails
                 // User is not attached to context so request won't have access to secure routes

@@ -1,6 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using DAL;
 using Microsoft.AspNetCore.Mvc;
-using WebApi.Entities;
 
 namespace WebApi.Controllers
 {

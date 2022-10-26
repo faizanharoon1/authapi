@@ -1,11 +1,10 @@
+using DAL;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Text;
-using System;
 using System.Diagnostics;
-using WebApi.Helpers;
 
 namespace WebApi.Services
 {
@@ -45,7 +44,7 @@ namespace WebApi.Services
             {
                 Debug.WriteLine(ex);
             }
-       
+
         }
     }
 }

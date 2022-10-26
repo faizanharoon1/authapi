@@ -1,5 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using WebApi.Helpers;
+using DAL;
 using WebApi.Middleware;
 using WebApi.Services;
 
@@ -15,48 +14,57 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddOptions();
+
 // configure strongly typed settings object
-var settings = builder.Configuration.GetSection("AppSettings").Get<AppSettings>();
+builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(nameof(AppSettings)));
+builder.Services.Configure<ConnectionStrings>(builder.Configuration.GetSection(nameof(ConnectionStrings)));
 
-// Add services to the container.
-builder.Services.AddDbContext<DataContext>(options =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("WebApiDatabase");
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-});
 // configure DI for application services
-builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddSingleton<IDbContext, DbContext>();
+builder.Services.AddSingleton<IDefaultSQLPolicy, DefaultSQLPolicy>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
-var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+try
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var app = builder.Build();
+
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+    app.UseRouting();
+
+    // global cors policy
+    app.UseCors(x => x
+        .SetIsOriginAllowed(origin => true)
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials());
+
+    // global error handler
+    app.UseMiddleware<ErrorHandlerMiddleware>();
+
+    // custom jwt auth middleware
+    app.UseMiddleware<JwtMiddleware>();
+    app.UseAuthorization();
+    app.UseEndpoints(x => x.MapControllers());
+
+    app.UseHttpsRedirection();
+
+
+
+    //app.MapControllers();
+
+    app.Run();
 }
-app.UseRouting();
+catch (Exception dc)
+{
 
-// global cors policy
-app.UseCors(x => x
-    .SetIsOriginAllowed(origin => true)
-    .AllowAnyMethod()
-    .AllowAnyHeader()
-    .AllowCredentials());
-
-// global error handler
-app.UseMiddleware<ErrorHandlerMiddleware>();
-
-// custom jwt auth middleware
-app.UseMiddleware<JwtMiddleware>();
-app.UseAuthorization();
-app.UseEndpoints(x => x.MapControllers());
-
-app.UseHttpsRedirection();
+    throw;
+}
 
 
-
-//app.MapControllers();
-
-app.Run();

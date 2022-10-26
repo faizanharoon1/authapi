@@ -1,8 +1,9 @@
+using Dapper.Contrib.Extensions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace WebApi.Entities
+namespace DAL
 {
     public class User
     {
@@ -16,12 +17,14 @@ namespace WebApi.Entities
         public Role Role { get; set; }
         public string VerificationToken { get; set; }
         public DateTime? Verified { get; set; }
+        [Computed]
         public bool IsVerified => Verified.HasValue || PasswordReset.HasValue;
         public string ResetToken { get; set; }
         public DateTime? ResetTokenExpires { get; set; }
         public DateTime? PasswordReset { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
+        [Computed]
         public List<RefreshToken> RefreshTokens { get; set; }
 
         public bool OwnsToken(string token) 
