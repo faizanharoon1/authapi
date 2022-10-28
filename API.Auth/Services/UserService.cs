@@ -24,7 +24,7 @@ namespace WebApi.Services
         void ValidateResetToken(ValidateResetTokenRequest model);
         void ResetPassword(ResetPasswordRequest model);
         IEnumerable<UserResponse> GetAll();
-        UserResponse GetById(Guid id);
+        Task<UserResponse> GetById(Guid id);
         UserResponse GetById(int id);
         UserResponse Create(CreateRequest model);
         UserResponse Update(int id, UpdateRequest model);
@@ -225,9 +225,9 @@ namespace WebApi.Services
             var User = getUser(id);
             return _mapper.Map<UserResponse>(User);
         }
-        public UserResponse GetById(Guid id)
+        public async Task<UserResponse> GetById(Guid id)
         {
-            var User = getUser(id);
+            var User = await getUser(id);
             return _mapper.Map<UserResponse>(User);
         }
         public UserResponse Create(CreateRequest model)
@@ -290,12 +290,12 @@ namespace WebApi.Services
             //return User;
             return null;
         }
-        private User getUser(Guid id)
+        private async Task<User> getUser(Guid id)
         {
-            //var User = _context.Users.FirstOrDefault(x => x.UserGuid.Equals(id));
-            //if (User == null) throw new KeyNotFoundException("User not found");
-            //return User;
-            return null;
+            var User = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE UserGuid=@UserGuid;", new { @UserGuid= id });
+
+            if (User == null) throw new KeyNotFoundException("User not found");
+            return User;
 
         }
         private (RefreshToken, User) getRefreshToken(string token)

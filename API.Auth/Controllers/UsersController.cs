@@ -25,7 +25,8 @@ namespace WebApi.Controllers
         public async Task<IActionResult> Authenticate(AuthenticateRequest model)
         {
             var response = await _UserService.Authenticate(model, ipAddress());
-            setTokenCookie(response.RefreshToken);
+            setTokenCookie("refreshToken", response.RefreshToken);
+            
             return Ok(response);
         }
 
@@ -34,7 +35,7 @@ namespace WebApi.Controllers
         {
             var refreshToken = Request.Cookies["refreshToken"];
             var response = _UserService.RefreshToken(refreshToken, ipAddress());
-            setTokenCookie(response.RefreshToken);
+            setTokenCookie("refreshToken", response.RefreshToken);
             return Ok(response);
         }
 
@@ -100,13 +101,13 @@ namespace WebApi.Controllers
         }
         [Authorize]
         [HttpGet("me/{id:guid}")]
-        public ActionResult<UserResponse> GetById(Guid id)
+        public async Task<ActionResult<UserResponse>> GetById(Guid id)
         {
             // users can get their own User and admins can get any User
             if (id != user.UserGuid)
                 return Unauthorized(new { message = "Unauthorized" });
 
-            var User = _UserService.GetById(id);
+            var User = await _UserService.GetById(id);
             return Ok(User);
         }
         [Authorize]
@@ -160,14 +161,14 @@ namespace WebApi.Controllers
 
         // helper methods
 
-        private void setTokenCookie(string token)
+        private void setTokenCookie(string cookieName, string token)
         {
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Expires = DateTime.UtcNow.AddDays(7)
+                Expires = DateTime.UtcNow.AddHours(1)
             };
-            Response.Cookies.Append("refreshToken", token, cookieOptions);
+            Response.Cookies.Append(cookieName, token, cookieOptions);
         }
 
         private string ipAddress()

@@ -44,10 +44,10 @@ namespace WebApi.Middleware
                 }, out SecurityToken validatedToken);
 
                 var jwtToken = (JwtSecurityToken)validatedToken;
-                var UserId = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
+                var Id = int.Parse(jwtToken.Claims.First(x => x.Type == "id").Value);
 
                 // attach User to context on successful jwt validation
-                context.Items["User"] = await dataContext.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users where Id=@UserId;", new { UserId });
+                context.Items["User"] = await dataContext.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users where Id=@Id;", new { Id });
             }
             catch
             {
