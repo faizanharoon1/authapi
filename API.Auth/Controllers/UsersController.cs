@@ -24,17 +24,29 @@ namespace WebApi.Controllers
         [HttpPost("authenticate")]
         public async Task<IActionResult> Authenticate(AuthenticateRequest model)
         {
-            var response = await _UserService.Authenticate(model, ipAddress());
-            setTokenCookie("refreshToken", response.RefreshToken);
-            
-            return Ok(response);
+            try
+            {
+                var response = await _UserService.Authenticate(model, ipAddress());
+                setTokenCookie("refreshToken", response.RefreshToken);
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPost("refresh-token")]
-        public ActionResult<AuthenticateResponse> RefreshToken()
+        public async Task<ActionResult<AuthenticateResponse>> RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
-            var response = _UserService.RefreshToken(refreshToken, ipAddress());
+
+            if (string.IsNullOrEmpty(refreshToken))
+                return BadRequest(new { message = "RefreshToken is required" });
+    
+            var response = await _UserService.RefreshToken(refreshToken, ipAddress());
             setTokenCookie("refreshToken", response.RefreshToken);
             return Ok(response);
         }

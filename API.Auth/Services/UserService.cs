@@ -2,7 +2,6 @@ using AutoMapper;
 using DAL;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -16,7 +15,7 @@ namespace WebApi.Services
     public interface IUserService
     {
         Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress);
-        AuthenticateResponse RefreshToken(string token, string ipAddress);
+        Task<AuthenticateResponse> RefreshToken(string token, string ipAddress);
         void RevokeToken(string token, string ipAddress);
         Task Register(RegisterRequest model, string origin);
         Task VerifyEmail(VerifyEmailRequest model);
@@ -79,30 +78,31 @@ namespace WebApi.Services
             return response;
         }
 
-        public AuthenticateResponse RefreshToken(string token, string ipAddress)
+        public async Task<AuthenticateResponse> RefreshToken(string token, string ipAddress)
         {
-            //var (refreshToken, User) = getRefreshToken(token);
+            var refreshToken = await getRefreshToken(token);
 
-            //// replace old refresh token with a new one and save
-            //var newRefreshToken = generateRefreshToken(ipAddress);
-            //refreshToken.Revoked = DateTime.UtcNow;
-            //refreshToken.RevokedByIp = ipAddress;
-            //refreshToken.ReplacedByToken = newRefreshToken.Token;
-            //User.RefreshTokens.Add(newRefreshToken);
+            var user = getUser(refreshToken.UserId);
+            if (user == null) throw new AppException("Invalid token");
+            // replace old refresh token with a new one and save
+            var newRefreshToken = generateRefreshToken(ipAddress);
+            refreshToken.Revoked = DateTime.UtcNow;
+            refreshToken.RevokedByIp = ipAddress;
+            refreshToken.ReplacedByToken = newRefreshToken.Token;
+            user.RefreshTokens.Add(newRefreshToken);
 
-            //removeOldRefreshTokens(User);
+            removeOldRefreshTokens(user);
+            // save changes to db
+            await _context.UpdateAsync(user);
 
-            //_context.Update(User);
-            //_context.SaveChanges();
+            // generate new jwt
+            var jwtToken = generateJwtToken(user);
 
-            //// generate new jwt
-            //var jwtToken = generateJwtToken(User);
+            var response = _mapper.Map<AuthenticateResponse>(user);
+            response.Access_token = jwtToken;
+            response.RefreshToken = newRefreshToken.Token;
+            return response;
 
-            //var response = _mapper.Map<AuthenticateResponse>(User);
-            //response.Access_token = jwtToken;
-            //response.RefreshToken = newRefreshToken.Token;
-            //return response;
-            return null;
         }
 
         public void RevokeToken(string token, string ipAddress)
@@ -148,7 +148,7 @@ namespace WebApi.Services
             // send email
             sendVerificationEmail(User, origin);
 
-         
+
         }
         async Task<User> GetUserByEmail(string email)
         {
@@ -158,12 +158,12 @@ namespace WebApi.Services
         {
             var User = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE UserGuid=@UserGuid;", new { model.UserGuid });
 
-            if (User == null || User.VerificationToken!=model.Token) throw new AppException("Verification failed");
+            if (User == null || User.VerificationToken != model.Token) throw new AppException("Verification failed");
 
             User.Verified = DateTime.UtcNow;
             User.VerificationToken = null;
 
-           await _context.UpdateAsync(User);
+            await _context.UpdateAsync(User);
         }
 
         public void ForgotPassword(ForgotPasswordRequest model, string origin)
@@ -292,20 +292,18 @@ namespace WebApi.Services
         }
         private async Task<User> getUser(Guid id)
         {
-            var User = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE UserGuid=@UserGuid;", new { @UserGuid= id });
+            var User = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE UserGuid=@UserGuid;", new { @UserGuid = id });
 
             if (User == null) throw new KeyNotFoundException("User not found");
             return User;
 
         }
-        private (RefreshToken, User) getRefreshToken(string token)
+        private async Task<RefreshToken> getRefreshToken(string token)
         {
-            //var User = _context.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
-            //if (User == null) throw new AppException("Invalid token");
-            //var refreshToken = User.RefreshTokens.Single(x => x.Token == token);
-            //if (!refreshToken.IsActive) throw new AppException("Invalid token");
-            //return (refreshToken, User);
-            return (null, null);
+            var refreshToken = await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.RefreshToken WHERE Token=token;", new { token });
+
+            if (!refreshToken.IsActive) throw new AppException("Invalid token");
+            return refreshToken;
         }
 
         private string generateJwtToken(User User)
@@ -315,7 +313,7 @@ namespace WebApi.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[] { new Claim("id", User.Id.ToString()) }),
-                Expires = DateTime.UtcNow.AddMinutes(15),
+                Expires = DateTime.UtcNow.AddMinutes(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
