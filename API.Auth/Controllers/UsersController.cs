@@ -198,8 +198,8 @@ namespace WebApi.Controllers
             {
                 HttpOnly = true,
                 Expires = DateTime.UtcNow.AddHours(1),
-                SameSite=SameSiteMode.None,
-                Secure=true
+                SameSite = SameSiteMode.None,
+                Secure = true
             };
             Response.Cookies.Append(cookieName, token, cookieOptions);
         }
