@@ -117,16 +117,17 @@ namespace WebApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserResponse>>> GetAll()
         {
-            try
-            {
-                var Users = await _UserService.GetAll();
-                return Ok(Users);
-            }
-            catch (Exception ex)
-            {
+            //try
+            //{
+            //    var Users = await _UserService.GetAll();
+            //    return Ok(Users);
+            //}
+            //catch (Exception ex)
+            //{
 
-                return BadRequest(new { message = ex.Message });
-            }
+            //    return BadRequest(new { message = ex.Message });
+            //}
+            return null;
 
         }
         [Authorize]
