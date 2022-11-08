@@ -1,5 +1,6 @@
 ﻿using DAL;
 using Microsoft.AspNetCore.Mvc;
+using DAL.Entities;
 
 namespace WebApi.Controllers
 {

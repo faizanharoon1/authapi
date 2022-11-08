@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace WebApi.Models.Users
+namespace BLL.Models.Users
 {
     public class ForgotPasswordRequest
     {

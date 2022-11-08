@@ -1,13 +1,23 @@
+using DAL;
 using System.ComponentModel.DataAnnotations;
+using DAL.Entities;
 
-namespace WebApi.Models.Users
+namespace BLL.Models.Users
 {
-    public class RegisterRequest
+    public class CreateRequest
     {
+
+        public string Title { get; set; }
+
+
         public string FirstName { get; set; }
 
 
         public string LastName { get; set; }
+
+
+        [EnumDataType(typeof(Role))]
+        public string Role { get; set; }
 
         [Required]
         [EmailAddress]
@@ -20,8 +30,5 @@ namespace WebApi.Models.Users
         [Required]
         [Compare("Password")]
         public string ConfirmPassword { get; set; }
-
-        // [Range(typeof(bool), "true", "true")]
-        public bool AcceptTerms { get; set; } = false;
     }
 }

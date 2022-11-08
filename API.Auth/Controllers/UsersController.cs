@@ -1,8 +1,9 @@
 ﻿using AutoMapper;
 using DAL;
 using Microsoft.AspNetCore.Mvc;
-using WebApi.Models.Users;
-using WebApi.Services;
+using BLL.Models.Users;
+using BLL.Services;
+using DAL.Entities;
 
 namespace WebApi.Controllers
 {

@@ -5,8 +5,10 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Text;
 using System.Diagnostics;
+using BLL.Services;
+using DAL.Entities;
 
-namespace WebApi.Services
+namespace BLL.Services
 {
     public interface IEmailService
     {

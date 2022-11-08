@@ -1,6 +1,7 @@
 using DAL;
-using WebApi.Middleware;
-using WebApi.Services;
+using BLL.Services;
+using API.Auth.Middleware;
+using DAL.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 

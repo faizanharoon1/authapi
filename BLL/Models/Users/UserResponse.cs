@@ -1,6 +1,6 @@
 using System;
 
-namespace WebApi.Models.Users
+namespace BLL.Models.Users
 {
     public class UserResponse
     {

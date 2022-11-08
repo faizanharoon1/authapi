@@ -4,8 +4,9 @@ using Microsoft.IdentityModel.Tokens;
 using Org.BouncyCastle.Asn1.Ocsp;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using DAL.Entities;
 
-namespace WebApi.Middleware
+namespace API.Auth.Middleware
 {
     public class JwtMiddleware
     {

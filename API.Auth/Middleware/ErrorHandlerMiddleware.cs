@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
-using WebApi.Helpers;
+using BLL.Helpers;
 
-namespace WebApi.Middleware
+namespace API.Auth.Middleware
 {
     public class ErrorHandlerMiddleware
     {

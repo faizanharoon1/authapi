@@ -1,8 +1,9 @@
 using AutoMapper;
 using DAL;
-using WebApi.Models.Users;
+using BLL.Models.Users;
+using DAL.Entities;
 
-namespace WebApi.Helpers
+namespace BLL.Helpers
 {
     public class AutoMapperProfile : Profile
     {

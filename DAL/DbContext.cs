@@ -7,6 +7,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Transactions;
+using DAL.Entities;
 
 namespace DAL
 {

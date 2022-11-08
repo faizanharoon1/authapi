@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using DAL;
+using DAL.Entities;
 
-namespace DAL
+namespace DAL.Entities
 {
 
     public class RefreshToken

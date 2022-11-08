@@ -1,7 +1,8 @@
 using DAL;
 using System.ComponentModel.DataAnnotations;
+using DAL.Entities;
 
-namespace WebApi.Models.Users
+namespace BLL.Models.Users
 {
     public class UpdateRequest
     {

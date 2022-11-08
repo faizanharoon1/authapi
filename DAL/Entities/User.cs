@@ -2,8 +2,10 @@ using Dapper.Contrib.Extensions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using DAL.Entities;
+using DAL;
 
-namespace DAL
+namespace DAL.Entities
 {
     public class User
     {

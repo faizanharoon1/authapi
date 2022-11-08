@@ -1,4 +1,5 @@
-namespace DAL
+using DAL;
+namespace DAL.Entities
 {
     public class AppSettings
     {

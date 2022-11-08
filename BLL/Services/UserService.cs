@@ -1,16 +1,17 @@
 using AutoMapper;
+using BLL.Helpers;
+using BLL.Models.Users;
 using DAL;
+using DAL.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using WebApi.Helpers;
-using WebApi.Models.Users;
 using BC = BCrypt.Net.BCrypt;
 
-namespace WebApi.Services
+namespace BLL.Services
 {
     public interface IUserService
     {
