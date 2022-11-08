@@ -1,6 +1,7 @@
 using DAL;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Org.BouncyCastle.Asn1.Ocsp;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
@@ -23,7 +24,13 @@ namespace WebApi.Middleware
 
             if (token != null)
                 await attachUserToContext(context, dataContext, token);
+            else
+            {
+                if(context.Request.Cookies["refreshToken"]!=null)
+                {
 
+                }
+            }
             await _next(context);
         }
 
@@ -51,6 +58,7 @@ namespace WebApi.Middleware
             }
             catch
             {
+                throw;
                 // do nothing if jwt validation fails
                 // User is not attached to context so request won't have access to secure routes
             }

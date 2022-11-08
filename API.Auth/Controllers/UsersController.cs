@@ -45,7 +45,7 @@ namespace WebApi.Controllers
 
             if (string.IsNullOrEmpty(refreshToken))
                 return BadRequest(new { message = "RefreshToken is required" });
-    
+
             var response = await _UserService.RefreshToken(refreshToken, ipAddress());
             setTokenCookie("refreshToken", response.RefreshToken);
             return Ok(response);
@@ -72,8 +72,17 @@ namespace WebApi.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest model)
         {
-          await  _UserService.Register(model, Request.Headers["origin"]);
-            return Ok(new { message = "Registration successful, please check your email for verification instructions" });
+            try
+            {
+                await _UserService.Register(model, Request.Headers["origin"]);
+                return Ok(new { message = "Registration successful, please check your email for verification instructions" });
+            }
+            catch (Exception ex)
+            {
+
+                return BadRequest(new { message = ex.Message });
+            }
+
         }
 
         [HttpPost("verify-email")]
@@ -106,10 +115,19 @@ namespace WebApi.Controllers
 
         [Authorize(Role.Admin)]
         [HttpGet]
-        public ActionResult<IEnumerable<UserResponse>> GetAll()
+        public async Task<ActionResult<IEnumerable<UserResponse>>> GetAll()
         {
-            var Users = _UserService.GetAll();
-            return Ok(Users);
+            try
+            {
+                var Users = await _UserService.GetAll();
+                return Ok(Users);
+            }
+            catch (Exception ex)
+            {
+
+                return BadRequest(new { message = ex.Message });
+            }
+
         }
         [Authorize]
         [HttpGet("me/{id:guid}")]
@@ -178,7 +196,9 @@ namespace WebApi.Controllers
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Expires = DateTime.UtcNow.AddHours(1)
+                Expires = DateTime.UtcNow.AddHours(1),
+                SameSite=SameSiteMode.None,
+                Secure=true
             };
             Response.Cookies.Append(cookieName, token, cookieOptions);
         }

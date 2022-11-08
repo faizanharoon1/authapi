@@ -14,7 +14,7 @@ public class AuthorizeAttribute : Attribute, IAuthorizationFilter
 
     public void OnAuthorization(AuthorizationFilterContext context)
     {
-        var User = (User)context.HttpContext.Items["User"];
+        User User = (User)context.HttpContext.Items["User"];
         if (User == null || (_roles.Any() && !_roles.Contains(User.Role)))
         {
             // not logged in or role not authorized

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -38,6 +39,10 @@ namespace WebApi.Middleware
                         // not found error
                         response.StatusCode = (int)HttpStatusCode.NotFound;
                         break;
+                    case SecurityTokenExpiredException te:
+                        // not found error
+                        response.StatusCode = (int)HttpStatusCode.Forbidden;
+                        return;
                     default:
                         // unhandled error
                         response.StatusCode = (int)HttpStatusCode.InternalServerError;
