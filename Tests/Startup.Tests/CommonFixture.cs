@@ -1,7 +1,8 @@
-﻿using DAL;
+﻿using BLL.Services;
+using DAL;
+using DAL.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using System.Reflection;
 
 namespace Startup.Tests
@@ -10,7 +11,7 @@ namespace Startup.Tests
     {
         public CommonFixture()
         {
-            var environment = "development";
+            var environment = "Development";
             environment = !string.IsNullOrEmpty(environment) ? $".{environment}" : "";
             Console.WriteLine("Environment appsettings file:" + $"appsettings{environment}.json");
             string? path = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location ?? "");
@@ -31,26 +32,11 @@ namespace Startup.Tests
 
             //Registering settings as IOptions
             services.AddSingleton<IConfiguration>(configuration);
-            //  <--- bind Configuration to IOptions<ConfigSettings>  ---->
-            //One advantage to using IOptions<T> or more specifically IOptionsSnapshot is
-            //that it can detect changes to the configuration source and
-            //reload configuration as the application is running.
             services.AddOptions();
-
-            services.Configure<IOptions<AppSettings>>(options => configuration.GetSection("AppSettings").Bind(options));
-            services.Configure<IOptions<ConnectionStrings>>(options => configuration.GetSection("ConnectionStrings").Bind(options));
-
+            services.Configure<AppSettings>(configuration.GetSection(nameof(AppSettings)));
+            services.Configure<ConnectionStrings>(configuration.GetSection(nameof(ConnectionStrings)));
             #endregion Configuration
-
-            // Registering Dependecy Injections
-            //---------------------------------------------------------------------------------------------------------------------------            
-            //   services.AddSingleton<IUserGroupAccessProvider, UserGroupAccessProvider>();
-            // services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true));
             FinalizeStartup(services);
-
-            //SqlMapper.AddTypeHandler(typeof(List<ImpressionsAgeGenderType>), new JsonObjectTypeHandler());
-            //SqlMapper.AddTypeHandler(typeof(Dictionary<string, int>), new JsonObjectTypeHandler());
-            //SqlMapper.AddTypeHandler(typeof(ImpressionsAgeGenderSums), new JsonObjectTypeHandler());
 
             ServiceProvider = services.BuildServiceProvider();
         }

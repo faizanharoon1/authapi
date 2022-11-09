@@ -21,4 +21,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Startup.Tests\Startup.Tests.csproj" />
+  </ItemGroup>
+
 </Project>

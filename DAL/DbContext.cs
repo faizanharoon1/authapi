@@ -75,7 +75,12 @@ namespace DAL
                     }
                     catch (SqlException ex)
                     {
-                        Debug.WriteLine("Exception: {0}", ex.Message);
+                        Debug.WriteLine("SqlException: {0}", ex.Message);
+                        throw;
+                    }
+                    catch (Exception edx)
+                    {
+                        Debug.WriteLine("Exception: {0}", edx.Message);
                         throw;
                     }
                     finally
@@ -102,7 +107,12 @@ namespace DAL
                     }
                     catch (SqlException ex)
                     {
-                        Debug.WriteLine("Exception: {0}", ex.Message);
+                        Debug.WriteLine("SqlException: {0}", ex.Message);
+                        throw;
+                    }
+                    catch (Exception edx)
+                    {
+                        Debug.WriteLine("Exception: {0}", edx.Message);
                         throw;
                     }
                     finally
@@ -132,7 +142,12 @@ namespace DAL
                     }
                     catch (SqlException ex)
                     {
-                        Debug.WriteLine("Exception: {0}", ex.Message);
+                        Debug.WriteLine("SqlException: {0}", ex.Message);
+                        throw;
+                    }
+                    catch (Exception edx)
+                    {
+                        Debug.WriteLine("Exception: {0}", edx.Message);
                         throw;
                     }
                     finally
@@ -160,8 +175,14 @@ namespace DAL
                     {
                         return await sqlconn.QueryAsync<T>(query, queryParameters);
                     }
-                    catch (SqlException)
+                    catch (SqlException ex)
                     {
+                        Debug.WriteLine("SqlException: {0}", ex.Message);
+                        throw;
+                    }
+                    catch (Exception edx)
+                    {
+                        Debug.WriteLine("Exception: {0}", edx.Message);
                         throw;
                     }
                     finally
@@ -194,7 +215,12 @@ namespace DAL
                     }
                     catch (SqlException ex)
                     {
-                        _logger.LogError("Caught SQL exception in ExecuteAsync {0}", ex);
+                        Debug.WriteLine("SqlException: {0}", ex.Message);
+                        throw;
+                    }
+                    catch (Exception edx)
+                    {
+                        Debug.WriteLine("Exception: {0}", edx.Message);
                         throw;
                     }
                     finally
@@ -231,7 +257,12 @@ namespace DAL
                     }
                     catch (SqlException ex)
                     {
-                        _logger.LogError("Caught SQL exception in ExecuteAsync {0}", ex);
+                        Debug.WriteLine("SqlException: {0}", ex.Message);
+                        throw;
+                    }
+                    catch (Exception edx)
+                    {
+                        Debug.WriteLine("Exception: {0}", edx.Message);
                         throw;
                     }
                     finally
