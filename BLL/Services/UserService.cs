@@ -17,7 +17,7 @@ namespace BLL.Services
     {
         Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress);
         Task<AuthenticateResponse> RefreshToken(string token, string ipAddress);
-        void RevokeToken(string token, string ipAddress);
+        Task RevokeToken(string token, string ipAddress);
         Task Register(RegisterRequest model, string origin);
         Task VerifyEmail(VerifyEmailRequest model);
         void ForgotPassword(ForgotPasswordRequest model, string origin);
@@ -61,12 +61,16 @@ namespace BLL.Services
 
             // authentication successful so generate jwt and refresh tokens
             var jwtToken = generateJwtToken(existingUser);
-
-
             // save changes to db
             await _context.UpdateAsync(existingUser);
 
-            RefreshToken refreshToken = await SaveOrUpdateRefreshToken(ipAddress, existingUser);
+
+            RefreshToken refreshToken = await GetRefreshTokensByUserId(existingUser.Id);
+            if (refreshToken == null)
+            {
+                refreshToken = await generateRefreshToken(ipAddress, existingUser.Id);
+            }
+
 
             var response = _mapper.Map<AuthenticateResponse>(existingUser);
             response.Access_token = jwtToken;
@@ -74,75 +78,67 @@ namespace BLL.Services
             return response;
         }
 
-        private async Task<RefreshToken> SaveOrUpdateRefreshToken(string ipAddress, User existingUser)
-        {
-            var refreshToken = generateRefreshToken(ipAddress);
-            if (existingUser.RefreshTokens == null)
-                existingUser.RefreshTokens = new List<RefreshToken>();
+        //private async Task<RefreshToken> SaveOrUpdateRefreshToken(string ipAddress, User existingUser)
+        //{
+        //    var refreshToken = generateRefreshToken(ipAddress);
+        //    if (existingUser.RefreshTokens == null)
+        //        existingUser.RefreshTokens = new List<RefreshToken>();
 
-            refreshToken.UserId = existingUser.Id;
-            existingUser.RefreshTokens.Add(refreshToken);
-            await SaveRefreshTokens(existingUser.RefreshTokens);
+        //    refreshToken.UserId = existingUser.Id;
+        //    existingUser.RefreshTokens.Add(refreshToken);
+        //    // remove old refresh tokens from User
+        //    removeOldRefreshTokens(existingUser.RefreshTokens);
+        //    await SaveRefreshTokens(existingUser.RefreshTokens);
+        //    return refreshToken;
+        //}
 
-            // remove old refresh tokens from User
-            removeOldRefreshTokens(existingUser);
-
-
-
-            return refreshToken;
-        }
-
-        private async Task SaveRefreshTokens(List<RefreshToken> RefreshTokens)
-        {
-            foreach (var item in RefreshTokens)
-            {
-                if (await GetRefreshTokensById(item.Id) == null)
-                    await _context.InsertAsync(item);
-            }
-        }
 
         public async Task<AuthenticateResponse> RefreshToken(string token, string ipAddress)
         {
+            RefreshToken? newRefreshToken = null;
             var refreshToken = await getRefreshToken(token);
+            if (refreshToken == null) throw new SecurityTokenExpiredException("Token sent from client does not exist!");
 
             var user = await GetUserById(refreshToken.UserId);
             if (user == null) throw new AppException("Invalid token");
-            // replace old refresh token with a new one and save
-            var newRefreshToken = generateRefreshToken(ipAddress);
-            refreshToken.Revoked = DateTime.UtcNow;
-            refreshToken.RevokedByIp = ipAddress;
-            refreshToken.ReplacedByToken = newRefreshToken.Token;
-            user.RefreshTokens.Add(newRefreshToken);
 
-            await SaveRefreshTokens(user.RefreshTokens);
 
-            removeOldRefreshTokens(user);
+            if (refreshToken.IsExpired)
+            {
+                // replace old refresh token with a new one and save
+                newRefreshToken = await generateRefreshToken(ipAddress, user.Id);
+
+                refreshToken.UserId = user.Id;
+                refreshToken.Revoked = DateTime.UtcNow;
+                refreshToken.RevokedByIp = ipAddress;
+                refreshToken.ReplacedByToken = newRefreshToken.Token;
+                await _context.UpdateAsync(refreshToken);
+
+                refreshToken = newRefreshToken;
+            }
 
             // generate new jwt
             var jwtToken = generateJwtToken(user);
-
             var response = _mapper.Map<AuthenticateResponse>(user);
             response.Access_token = jwtToken;
-            response.RefreshToken = newRefreshToken.Token;
+            response.RefreshToken = refreshToken.Token;
             return response;
 
         }
 
-        public void RevokeToken(string token, string ipAddress)
+        public async Task RevokeToken(string token, string ipAddress)
         {
-            //var (refreshToken, User) = getRefreshToken(token);
+            var refreshToken = await getRefreshToken(token);
 
-            //// revoke token and save
-            //refreshToken.Revoked = DateTime.UtcNow;
-            //refreshToken.RevokedByIp = ipAddress;
-            //_context.Update(User);
-            //_context.SaveChanges();
+            // revoke token and save
+            refreshToken.Revoked = DateTime.UtcNow;
+            refreshToken.RevokedByIp = ipAddress;
+            await _context.UpdateAsync(refreshToken);
         }
 
         public async Task Register(RegisterRequest model, string origin)
         {
             User existingUser = await GetUserByEmail(model.Email);
-
 
             // validate
             if (existingUser?.Email == model.Email)
@@ -244,8 +240,6 @@ namespace BLL.Services
             var User = await _context.QueryFirstOrDefaultAsync<User>("SELECT * FROM ef.users WHERE Email=@email;", new { email });
             if (User == null) throw new KeyNotFoundException("User not found");
 
-            await AddRefreshTokens(User);
-
             return User;
         }
         public async Task<User> GetUserById(int id)
@@ -322,8 +316,6 @@ namespace BLL.Services
 
             if (User == null) throw new KeyNotFoundException("User not found");
 
-            await AddRefreshTokens(User);
-
             return User;
 
         }
@@ -333,35 +325,21 @@ namespace BLL.Services
 
             if (User == null) throw new KeyNotFoundException("User not found");
 
-            await AddRefreshTokens(User);
-
             return User;
 
         }
 
-        private async Task AddRefreshTokens(User User)
+        private async Task<RefreshToken> GetRefreshTokensByUserId(int Id)
         {
-            IEnumerable<RefreshToken> refreshTokens = await GetRefreshTokensByUserId(User.Id);
-
-            if (refreshTokens != null && refreshTokens.Any())
-            {
-                if (User.RefreshTokens == null)
-                    User.RefreshTokens = new List<RefreshToken>();
-                User.RefreshTokens.AddRange(refreshTokens.ToList());
-            }
-        }
-
-        private async Task<IEnumerable<RefreshToken>> GetRefreshTokensByUserId(int Id)
-        {
-            return await _context.QueryAsyncWithRetry<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE UserId=@Id;", new { Id });
+            return await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE UserId=@Id and revoked is  null;", new { Id });
         }
         private async Task<RefreshToken> GetRefreshTokensById(int Id)
         {
-            return await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE Id=@Id;", new { Id });
+            return await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE Id=@Id and revoked is  null;", new { Id });
         }
         private async Task<RefreshToken> getRefreshToken(string token)
         {
-            var refreshToken = await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE Token=token;", new { token });
+            var refreshToken = await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE Token=@token;", new { token });
 
             if (!refreshToken.IsActive) throw new AppException("Invalid token");
             return refreshToken;
@@ -381,22 +359,22 @@ namespace BLL.Services
             return tokenHandler.WriteToken(token);
         }
 
-        private RefreshToken generateRefreshToken(string ipAddress)
+        private async Task<RefreshToken> generateRefreshToken(string ipAddress, int UserId)
         {
-            return new RefreshToken
+            var newToken = new RefreshToken
             {
+                UserId = UserId,
                 Token = randomTokenString(),
                 Expires = DateTime.UtcNow.AddDays(7),
                 Created = DateTime.UtcNow,
                 CreatedByIp = ipAddress
             };
-        }
 
-        private void removeOldRefreshTokens(User User)
-        {
-            User.RefreshTokens.RemoveAll(x =>
-                !x.IsActive &&
-                x.Created.AddDays(_appSettings.Value.RefreshTokenTTL) <= DateTime.UtcNow);
+            int res = await _context.InsertAsync(newToken);
+            if (res <= 0)
+                throw new InvalidDataException("generateRefreshToken failed");
+
+            return newToken;
         }
 
         private string randomTokenString()

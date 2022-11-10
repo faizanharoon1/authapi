@@ -63,8 +63,8 @@ namespace WebApi.Controllers
                 return BadRequest(new { message = "Token is required" });
 
             // users can revoke their own tokens and admins can revoke any tokens
-            if (!user.OwnsToken(token) && user.Role != Role.Admin)
-                return Unauthorized(new { message = "Unauthorized" });
+            //if (!user.OwnsToken(token) && user.Role != Role.Admin)
+            //    return Unauthorized(new { message = "Unauthorized" });
 
             _UserService.RevokeToken(token, ipAddress());
             return Ok(new { message = "Token revoked" });

@@ -34,7 +34,6 @@ namespace API.Auth.Middleware
             }
             await _next(context);
         }
-
         private async Task attachUserToContext(HttpContext context, IDbContext dataContext, string token)
         {
             try

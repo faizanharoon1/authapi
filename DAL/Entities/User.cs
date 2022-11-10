@@ -26,12 +26,12 @@ namespace DAL.Entities
         public DateTime? PasswordReset { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
-        [Computed]
-        public List<RefreshToken> RefreshTokens { get; set; }
+       // [Computed]
+        //public List<RefreshToken> RefreshTokens { get; set; }
 
-        public bool OwnsToken(string token) 
-        {
-            return this.RefreshTokens?.Find(x => x.Token == token) != null;
-        }
+        //public bool OwnsToken(string token) 
+        //{
+        //    return this.RefreshTokens?.Find(x => x.Token == token) != null;
+        //}
     }
 }
