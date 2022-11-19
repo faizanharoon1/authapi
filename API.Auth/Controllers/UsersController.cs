@@ -62,14 +62,27 @@ namespace WebApi.Controllers
             if (string.IsNullOrEmpty(token))
                 return BadRequest(new { message = "Token is required" });
 
-            // users can revoke their own tokens and admins can revoke any tokens
-            //if (!user.OwnsToken(token) && user.Role != Role.Admin)
-            //    return Unauthorized(new { message = "Unauthorized" });
-
             _UserService.RevokeToken(token, ipAddress());
             return Ok(new { message = "Token revoked" });
         }
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            // accept token from request body or cookie
+            var token =  Request.Cookies["refreshToken"];
 
+            if (string.IsNullOrEmpty(token))
+                return BadRequest(new { message = "Token is required" });
+
+            var validToken = await _UserService.GetRefreshToken(token);
+
+            if (validToken.IsExpired || validToken==null)
+            return BadRequest(new { message = "Token is required" });
+
+            forceCookieExpiry("refreshToken", validToken.Token);
+            return Ok(new { Loggedout = true, message = "User Loggedout!!" });
+        }
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest model)
         {
@@ -203,8 +216,20 @@ namespace WebApi.Controllers
                 Secure = true
             };
             Response.Cookies.Append(cookieName, token, cookieOptions);
-        }
 
+        }
+        private void forceCookieExpiry(string cookieName, string token)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = DateTime.UtcNow.AddHours(-1),
+                SameSite = SameSiteMode.None,
+                Secure = true
+            };
+            Response.Cookies.Append(cookieName, token, cookieOptions);
+
+        }
         private string ipAddress()
         {
             if (Request.Headers.ContainsKey("X-Forwarded-For"))

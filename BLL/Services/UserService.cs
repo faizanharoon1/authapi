@@ -17,6 +17,7 @@ namespace BLL.Services
     {
         Task<AuthenticateResponse> Authenticate(AuthenticateRequest model, string ipAddress);
         Task<AuthenticateResponse> RefreshToken(string token, string ipAddress);
+        Task<RefreshToken> GetRefreshToken(string token);
         Task RevokeToken(string token, string ipAddress);
         Task Register(RegisterRequest model, string origin);
         Task VerifyEmail(VerifyEmailRequest model);
@@ -96,7 +97,7 @@ namespace BLL.Services
         public async Task<AuthenticateResponse> RefreshToken(string token, string ipAddress)
         {
             RefreshToken? newRefreshToken = null;
-            var refreshToken = await getRefreshToken(token);
+            var refreshToken = await GetRefreshToken(token);
             if (refreshToken == null) throw new SecurityTokenExpiredException("Token sent from client does not exist!");
 
             var user = await GetUserById(refreshToken.UserId);
@@ -128,7 +129,7 @@ namespace BLL.Services
 
         public async Task RevokeToken(string token, string ipAddress)
         {
-            var refreshToken = await getRefreshToken(token);
+            var refreshToken = await GetRefreshToken(token);
 
             // revoke token and save
             refreshToken.Revoked = DateTime.UtcNow;
@@ -337,7 +338,7 @@ namespace BLL.Services
         {
             return await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE Id=@Id and revoked is  null;", new { Id });
         }
-        private async Task<RefreshToken> getRefreshToken(string token)
+        public async Task<RefreshToken> GetRefreshToken(string token)
         {
             var refreshToken = await _context.QueryFirstOrDefaultAsync<RefreshToken>("SELECT * FROM ef.refreshtokens WHERE Token=@token;", new { token });
 
