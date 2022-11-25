@@ -71,6 +71,8 @@ namespace BLL.Services
             {
                 refreshToken = await generateRefreshToken(ipAddress, existingUser.Id);
             }
+            else if(refreshToken.IsExpired)
+                refreshToken = await generateRefreshToken(ipAddress, existingUser.Id);
 
 
             var response = _mapper.Map<AuthenticateResponse>(existingUser);
